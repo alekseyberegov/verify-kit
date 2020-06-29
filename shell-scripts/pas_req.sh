@@ -1,36 +1,59 @@
 #/bin/bash
 
 . $(dirname "$0")/functions/base.sh
+. $(dirname "$0")/functions/yaml-parser.sh
 
+usage ()
+{
+   printf -- "\n"
+   printf -- "Usage: \n"
+   printf -- "  $0 [OPTIONS]\n\n"
+   printf -- "Send request to PAS\n\n"
+   printf -- "Options:\n"
+   printf -- "  -r, --request file     specify config for the request\n"
+   printf -- "  -h, --help             show help\n"
+   printf -- "\n"
+   exit 1
+}
 
-# ##############################################################################################################
+POSITIONAL=()
+while [[ $# -gt 0 ]]
+do
+   key="$1"
 
-user_id="9d7f20be-088a-4775-b408-d47180b2ecd9"
+   case $key in
+      -h|--help)
+      usage
+      ;;
+      -r|--request)
+      config_file="$2"
+      shift
+      shift 
+      ;;
+      *)
+      POSITIONAL+=("$1") 
+      shift 
+      ;;
+   esac
+done
+set -- "${POSITIONAL[@]}"
 
-user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 Chrome/83.0.4103.97 Safari/537.36"
+if [[ $config_file == "" ]]
+then
+   usage
+fi
 
-user_segments='{"typeOne":["1","4","7"],"typeTwo":[4,10]}'
+pas_req=$(abs_path $config_file)
 
-page_url="https://www.mapquest.com/routeplanner"
-
-pas_url="https://www.clicktripz.com/x/pas"
-
-site_name="mapquest"
-
-placement_id="2819-0"
-
-# ##############################################################################################################
-
-pas_proto="$(echo ${pas_url} | grep :// | sed -e's,^\(.*://\).*,\1,g')"
-pas_path="$(echo ${pas_url/$pas_proto/})"
-pas_host="$(echo ${pas_path} | cut -d/ -f1)"
+eval $(parse_yaml ${pas_req})
+eval $(parse_url ${page_url} "page_url_")
 
 pas_params=$(join_by "&"  \
    "ctzpid=$(uuidgen)" \
    "alias=${site_name}" \
    "siteId=${site_name}" \
    "placementId=${placement_id}" \
-   "audiences=$(url_encode $user_segments)" \
+   "audiences=$(url_encode $audiences)" \
    "ref=$(url_encode $page_url)" \
    "optMaxChecked=2" \
    "optMaxAdvertisers=7" \
@@ -44,7 +67,7 @@ pas_params=$(join_by "&"  \
    )
 
 curl  "${pas_url}?${pas_params}" \
-  -H "authority:${pas_host}" \
+  -H "authority:${page_url_hostport}" \
   -H "user-agent: ${user_agent}" \
   -H 'accept: */*' \
   -H 'sec-fetch-site: cross-site' \
