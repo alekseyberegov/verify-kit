@@ -56,3 +56,9 @@ function join_by() {
 function abs_path() {
     echo "$(cd "$(dirname "$1")"; pwd)/$(basename "$1")"
 }
+
+function repeat_char() {
+    local n=$1
+    local ch=$2
+    head -c $n < /dev/zero | tr '\0' $ch
+}

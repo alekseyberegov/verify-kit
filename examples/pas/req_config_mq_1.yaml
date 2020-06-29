@@ -1,9 +1,9 @@
 ## configuration for the PAS request
 pas_url: "https://www.clicktripz.com/x/pas"
-user_id: "9d7f20be-088a-4775-b408-d47180b2ecd9"
+user_id: "0446e614-0db4-4b4d-be74-c1095e1ee71e"
 user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 Chrome/83.0.4103.97 Safari/537.36"
 site_name: "mapquest"
 page_url: "https://www.mapquest.com/routeplanner"
 placement_id: "2819-0"
-audiences: "{\"typeOne\":[\"1\",\"4\",\"7\"],\"typeTwo\":[4,10]}"
+audiences: "{\"typeOne\":[\"1\",\"5\"],\"typeTwo\":[4]}"
 

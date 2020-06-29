@@ -18,17 +18,22 @@ usage ()
 }
 
 show_settings () {
-   printf -- "\n"
-   printf -- "%-15s: %s\n" "endpoint" ${constrain_url}
-   printf -- "%-15s: %s\n" "site" ${site_name}
-   printf -- "%-15s: %s\n" "host" "${page_url_hostport}"
-   printf -- "%-15s: %s\n" "origin" "${page_url_proto}/${page_url_hostport}"
-   printf -- "%-15s: %s\n" "url" ${page_url}
-   printf -- "%-15s: %s\n" "session" ${session_id}
-   printf -- "%-15s: %s\n" "user_id" ${user_id}
-   printf -- "%-15s: %s\n" "user_agent" "${user_agent}"
-   printf -- "%-15s: %s\n" "params" ${constrain_params}
-   printf -- "\n"
+    local ch='-'
+
+    printf -- "\n"
+    printf -- "+-------------+%s+\n" "$(repeat_char 65 $ch)"
+    printf -- "| %-12s| %-64s|\n" "Name" "Value"
+    printf -- "+-------------+%s+\n" "$(repeat_char 65 $ch)"
+    printf -- "| %-12s: %-64s|\n" "endpoint" ${constrain_url}
+    printf -- "| %-12s: %-64s|\n" "site" ${site_name}
+    printf -- "| %-12s: %-64s|\n" "host" "${page_url_hostport}"
+    printf -- "| %-12s: %-64s|\n" "origin" "${page_url_proto}${page_url_hostport}"
+    printf -- "| %-12s: %-64s|\n" "url" ${page_url}
+    printf -- "| %-12s: %-64s|\n" "session" ${session_id}
+    printf -- "| %-12s: %-64s|\n" "user_id" ${user_id}
+    printf -- "| %-12s: %-64s|\n" "user_agent" "${user_agent}"
+    printf -- "| %-12s: %-64s|\n" "params" ${constrain_params}
+    printf -- "+-------------+%s+\n\n" "$(repeat_char 65 $ch)"
 }
 
 POSITIONAL=()
@@ -77,11 +82,14 @@ then
    show_settings
 fi
 
+printf -- "%-14s-> %s\n" "request" "${constrain_url}?${constrain_params}"
+printf -- "%-14s<- " "response"
+
 curl "${constrain_url}?${constrain_params}" \
   -H "authority: ${authority_header}" \
   -H "user-agent: ${user_agent}" \
   -H "accept: */*" \
-  -H "origin: ${page_url_proto}/${page_url_hostport}" \
+  -H "origin: ${page_url_proto}${page_url_hostport}" \
   -H "sec-fetch-site: cross-site" \
   -H "sec-fetch-mode: cors" \
   -H "sec-fetch-dest: empty" \
@@ -89,4 +97,5 @@ curl "${constrain_url}?${constrain_params}" \
   -H "accept-language: en-US,en;q=0.9,ru;q=0.8" \
   -H "cookie: PHPSESSID=${session_id}; _ctuid=${user_id};" \
   --compressed
-  
+
+printf -- "\n\n"
