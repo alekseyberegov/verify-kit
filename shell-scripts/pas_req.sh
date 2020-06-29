@@ -12,8 +12,23 @@ usage ()
    printf -- "Options:\n"
    printf -- "  -r, --request file     specify config for the request\n"
    printf -- "  -h, --help             show help\n"
+   printf -- "  -s, --settings         print settings\n"
    printf -- "\n"
    exit 1
+}
+
+show_settings () {
+   printf -- "\n"
+   printf -- "%-15s: %s\n" "endpoint" ${pas_url}
+   printf -- "%-15s: %s\n" "site" ${site_name}
+   printf -- "%-15s: %s\n" "placement" ${placement_id}
+   printf -- "%-15s: %s\n" "host" "${page_url_host}"
+   printf -- "%-15s: %s\n" "url" ${page_url}
+   printf -- "%-15s: %s\n" "audiences" ${audiences}
+   printf -- "%-15s: %s\n" "user_id" ${user_id}
+   printf -- "%-15s: %s\n" "user_agent" "${user_agent}"
+   printf -- "%-15s: %s\n" "params" ${pas_params}
+   printf -- "\n"
 }
 
 POSITIONAL=()
@@ -24,6 +39,10 @@ do
    case $key in
       -h|--help)
       usage
+      ;;
+      -s|--settings)
+      settings="on"
+      shift
       ;;
       -r|--request)
       config_file="$2"
@@ -65,6 +84,11 @@ pas_params=$(join_by "&"  \
    "callback=jsonp_func" \
    "obj=exit_unit" \
    )
+
+if [[ "$settings" == "on" ]]
+then
+   show_settings
+fi
 
 curl  "${pas_url}?${pas_params}" \
   -H "authority:${page_url_hostport}" \
