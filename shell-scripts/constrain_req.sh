@@ -17,6 +17,20 @@ usage ()
    exit 1
 }
 
+show_settings () {
+   printf -- "\n"
+   printf -- "%-15s: %s\n" "endpoint" ${constrain_url}
+   printf -- "%-15s: %s\n" "site" ${site_name}
+   printf -- "%-15s: %s\n" "host" "${page_url_hostport}"
+   printf -- "%-15s: %s\n" "origin" "${page_url_proto}/${page_url_hostport}"
+   printf -- "%-15s: %s\n" "url" ${page_url}
+   printf -- "%-15s: %s\n" "session" ${session_id}
+   printf -- "%-15s: %s\n" "user_id" ${user_id}
+   printf -- "%-15s: %s\n" "user_agent" "${user_agent}"
+   printf -- "%-15s: %s\n" "params" ${constrain_params}
+   printf -- "\n"
+}
+
 POSITIONAL=()
 while [[ $# -gt 0 ]]
 do
@@ -51,16 +65,28 @@ fi
 pas_req=$(abs_path $config_file)
 
 eval $(parse_yaml ${pas_req})
+eval $(parse_url ${page_url} "page_url_")
 
-curl 'https://www.clicktripz.com/api/integrations/v1/constrain?publisherAlias=mapquest&u=https://mapquest.com/' \
-  -H 'authority: www.clicktripz.com' \
-  -H 'user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36' \
-  -H 'accept: */*' \
-  -H 'origin: https://nypost.com' \
-  -H 'sec-fetch-site: cross-site' \
-  -H 'sec-fetch-mode: cors' \
-  -H 'sec-fetch-dest: empty' \
-  -H 'referer: https://nypost.com/' \
-  -H 'accept-language: en-US,en;q=0.9,ru;q=0.8' \
-  -H "cookie: PHPSESSID=9cba75d4852f8fd8c50f8f92ee7bb677; _ctuid=9d7f20be-088a-4775-b408-d47180b2ecd9;" \
+constrain_params=$(join_by "&"  \
+   "publisherAlias=${site_name}" \
+   "u=${page_url}" \
+   )
+
+if [[ "$settings" == "on" ]]
+then
+   show_settings
+fi
+
+curl "${constrain_url}?${constrain_params}" \
+  -H "authority: ${authority_header}" \
+  -H "user-agent: ${user_agent}" \
+  -H "accept: */*" \
+  -H "origin: ${page_url_proto}/${page_url_hostport}" \
+  -H "sec-fetch-site: cross-site" \
+  -H "sec-fetch-mode: cors" \
+  -H "sec-fetch-dest: empty" \
+  -H "referer: ${page_url}" \
+  -H "accept-language: en-US,en;q=0.9,ru;q=0.8" \
+  -H "cookie: PHPSESSID=${session_id}; _ctuid=${user_id};" \
   --compressed
+  
