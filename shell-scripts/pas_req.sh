@@ -10,26 +10,34 @@ usage ()
    printf -- "  $0 [OPTIONS]\n\n"
    printf -- "Send request to PAS\n\n"
    printf -- "Options:\n"
-   printf -- "  -r, --request file     specify config for the request\n"
+   printf -- "  -r, --request file     request configuratio file\n"
    printf -- "  -h, --help             show help\n"
-   printf -- "  -s, --settings         print settings\n"
+   printf -- "  -v, --verbose          verbose mode\n"
    printf -- "\n"
    exit 1
 }
 
+
 show_settings () {
-   printf -- "\n"
-   printf -- "%-15s: %s\n" "endpoint" ${pas_url}
-   printf -- "%-15s: %s\n" "site" ${site_name}
-   printf -- "%-15s: %s\n" "placement" ${placement_id}
-   printf -- "%-15s: %s\n" "host" "${page_url_host}"
-   printf -- "%-15s: %s\n" "url" ${page_url}
-   printf -- "%-15s: %s\n" "audiences" ${audiences}
-   printf -- "%-15s: %s\n" "user_id" ${user_id}
-   printf -- "%-15s: %s\n" "user_agent" "${user_agent}"
-   printf -- "%-15s: %s\n" "params" ${pas_params}
-   printf -- "\n"
+    local ch='-'
+
+    printf -- "\n"
+    printf -- "+-------------+%s+\n" "$(repeat_char 65 $ch)"
+    printf -- "| %-12s| %-64s|\n" "Name" "Value"
+    printf -- "+-------------+%s+\n" "$(repeat_char 65 $ch)"
+    printf -- "| %-12s: %-64s|\n" "endpoint" ${pas_url}
+    printf -- "| %-12s: %-64s|\n" "site" ${site_name}
+    printf -- "| %-12s: %-64s|\n" "host" "${page_url_hostport}"
+    printf -- "| %-12s: %-64s|\n" "placement_id" "${placement_id}"
+    printf -- "| %-12s: %-64s|\n" "url" ${page_url}
+    printf -- "| %-12s: %-64s|\n" "audiences" ${audiences}
+    printf -- "| %-12s: %-64s|\n" "user_id" ${user_id}
+    printf -- "| %-12s: %-64s|\n" "user_agent" "${user_agent}"
+    printf -- "| %-12s: %-64s|\n" "destination" "${destination}"
+    printf -- "| %-12s: %-64s|\n" "params" ${pas_params}
+    printf -- "+-------------+%s+\n\n" "$(repeat_char 65 $ch)"
 }
+
 
 POSITIONAL=()
 while [[ $# -gt 0 ]]
@@ -40,8 +48,8 @@ do
       -h|--help)
       usage
       ;;
-      -s|--settings)
-      settings="on"
+      -v|--verbose)
+      verbose="on"
       shift
       ;;
       -r|--request)
@@ -83,12 +91,22 @@ pas_params=$(join_by "&"  \
    "userForcedTabbedMode=1" \
    "callback=jsonp_func" \
    "obj=exit_unit" \
+   $(if_set "${destination}" "destination=$(url_encode ${destination})") \
+   $(if_set "${origin}" "origin=${origin}") \
+   $(if_set "${startDate}" "startDate=$(url_encode ${startDate})") \
+   $(if_set "${endDate}" "endDate=$(url_encode ${endDate})") \
+   $(if_set "${adults}" "adults=${adults}") \
+   $(if_set "${isOneWay}" "isOneWay=${isOneWay}") \
    )
 
-if [[ "$settings" == "on" ]]
+
+if [[ "$verbose" == "on" ]]
 then
    show_settings
 fi
+
+printf -- "%-14s-> %s\n" "request" "${pas_url}?${pas_params}"
+printf -- "%-14s<- " "response"
 
 curl  "${pas_url}?${pas_params}" \
   -H "authority:${page_url_hostport}" \

@@ -32,7 +32,7 @@ parse_url() {
 }
 
 url_encode() {
-  local string="${1}"
+  local string="${@}"
   local strlen=${#string}
   local encoded=""
   local pos c o
@@ -58,7 +58,13 @@ function abs_path() {
 }
 
 function repeat_char() {
-    local n=$1
-    local ch=$2
+    local n=$1; ch=$2
     head -c $n < /dev/zero | tr '\0' $ch
+}
+
+function if_set() {
+    if [[ ! -z "$1" ]] 
+    then 
+        shift; echo "${@}"
+    fi
 }

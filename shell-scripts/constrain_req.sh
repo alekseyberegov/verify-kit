@@ -12,7 +12,7 @@ usage ()
    printf -- "Options:\n"
    printf -- "  -r, --request file     specify config for the request\n"
    printf -- "  -h, --help             show help\n"
-   printf -- "  -s, --settings         print settings\n"
+   printf -- "  -v, --verbose          verbose mode\n"
    printf -- "\n"
    exit 1
 }
@@ -45,8 +45,8 @@ do
       -h|--help)
       usage
       ;;
-      -s|--settings)
-      settings="on"
+      -v|--verbose)
+      verbose="on"
       shift
       ;;
       -r|--request)
@@ -74,10 +74,11 @@ eval $(parse_url ${page_url} "page_url_")
 
 constrain_params=$(join_by "&"  \
    "publisherAlias=${site_name}" \
-   "u=${page_url}" \
+   "u=$(url_encode ${page_url})" \
+   "_ctuid=${user_id}" \
    )
 
-if [[ "$settings" == "on" ]]
+if [[ "$verbose" == "on" ]]
 then
    show_settings
 fi
