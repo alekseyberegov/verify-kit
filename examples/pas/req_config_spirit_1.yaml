@@ -1,7 +1,7 @@
 ## configuration for the PAS request
 pas_url: "https://compare.spirit.com/x/pas"
-user_id: "779c8d88-ad99-49fa-b75b-7f9c81d0999e"
-user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 Chrome/83.0.4103.97 Safari/537.36"
+user_id: "d19eb199-19b0-49fa-af19-83406b44e751"
+user_agent: "Mozilla/5.0 (iPhone; CPU iPhone OS 13_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/83.0.4103.88 Mobile/15E148 Safari/604.1"
 site_name: "spirit"
 page_url: "https://www.spirit.com"
 placement_id: "2713-3"
