@@ -1,10 +1,10 @@
 ## configuration for the PAS request
 pas_url: "https://compare.spirit.com/x/pas"
-user_id: "0446e614-0db4-4b4d-be74-c1095e1ee71e"
+user_id: "779c8d88-ad99-49fa-b75b-7f9c81d0999e"
 user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 Chrome/83.0.4103.97 Safari/537.36"
 site_name: "spirit"
 page_url: "https://www.spirit.com"
-placement_id: "2486-3"
+placement_id: "2713-3"
 audiences: "{\"typeOne\":[\"1\",\"5\"],\"typeTwo\":[4]}"
 startDate: "07/02/2020"
 endDate: "07/05/2020"
