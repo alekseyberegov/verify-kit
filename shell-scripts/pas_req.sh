@@ -2,6 +2,7 @@
 
 . $(dirname "$0")/functions/base.sh
 . $(dirname "$0")/functions/yaml-parser.sh
+. $(dirname "$0")/functions/prettyprint.sh
 
 usage ()
 {
@@ -18,24 +19,21 @@ usage ()
 }
 
 
-show_settings () {
-    local ch='-'
+print_params () {
+   declare -a nv=( \
+      "endpoint=${pas_url}" \
+      "site=${site_name}" \
+      "host=${page_url_hostport}" \
+      "placement_id=${placement_id}" \
+      "url=${page_url}" \
+      "audiences=${audiences}" \
+      "user_id=${user_id}" \
+      "user_agent=${user_agent}" \
+      "destination=${destination}" \
+      "params=${pas_params}" \
+   )
 
-    printf -- "\n"
-    printf -- "+-------------+%s+\n" "$(repeat_char 65 $ch)"
-    printf -- "| %-12s| %-64s|\n" "Name" "Value"
-    printf -- "+-------------+%s+\n" "$(repeat_char 65 $ch)"
-    printf -- "| %-12s: %-64s|\n" "endpoint" ${pas_url}
-    printf -- "| %-12s: %-64s|\n" "site" ${site_name}
-    printf -- "| %-12s: %-64s|\n" "host" "${page_url_hostport}"
-    printf -- "| %-12s: %-64s|\n" "placement_id" "${placement_id}"
-    printf -- "| %-12s: %-64s|\n" "url" ${page_url}
-    printf -- "| %-12s: %-64s|\n" "audiences" ${audiences}
-    printf -- "| %-12s: %-64s|\n" "user_id" ${user_id}
-    printf -- "| %-12s: %-64s|\n" "user_agent" "${user_agent}"
-    printf -- "| %-12s: %-64s|\n" "destination" "${destination}"
-    printf -- "| %-12s: %-64s|\n" "params" ${pas_params}
-    printf -- "+-------------+%s+\n\n" "$(repeat_char 65 $ch)"
+   print_nvc nv
 }
 
 
@@ -75,7 +73,7 @@ pas_req=$(abs_path $config_file)
 eval $(parse_yaml ${pas_req})
 eval $(parse_url ${page_url} "page_url_")
 
-pas_params=$(join_by "&"  \
+pas_params=$(str_join "&"  \
    "ctzpid=$(uuidgen)" \
    "alias=${site_name}" \
    "siteId=${site_name}" \
@@ -98,11 +96,10 @@ pas_params=$(join_by "&"  \
    $(if_set "${adults}" "adults=${adults}") \
    $(if_set "${isOneWay}" "isOneWay=${isOneWay}") \
    )
-
-
+   
 if [[ "$verbose" == "on" ]]
 then
-   show_settings
+   print_params
 fi
 
 printf -- "%-14s-> %s\n" "request" "${pas_url}?${pas_params}"

@@ -72,7 +72,7 @@ pas_req=$(abs_path $config_file)
 eval $(parse_yaml ${pas_req})
 eval $(parse_url ${page_url} "page_url_")
 
-constrain_params=$(join_by "&"  \
+constrain_params=$(str_join "&"  \
    "publisherAlias=${site_name}" \
    "u=$(url_encode ${page_url})" \
    "_ctuid=${user_id}" \

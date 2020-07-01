@@ -37,7 +37,7 @@ url_encode() {
   echo "${encoded}"
 }
 
-function join_by() { 
+function str_join() { 
     local d=$1; shift; echo -n "$1"; shift; printf "%s" "${@/#/$d}"; 
 }
 
@@ -55,4 +55,9 @@ function if_set() {
     then 
         shift; echo "${@}"
     fi
+}
+
+foreach () { 
+  arr="$(declare -p $1)" ; eval "declare -a f="${arr#*=}; 
+  for i in ${!f[@]}; do $2 "$i" "${f[$i]}"; done
 }
