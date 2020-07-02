@@ -2,6 +2,7 @@
 
 . $(dirname "$0")/functions/base.sh
 . $(dirname "$0")/functions/yaml-parser.sh
+. $(dirname "$0")/functions/prettyprint.sh
 
 usage ()
 {
@@ -18,22 +19,19 @@ usage ()
 }
 
 show_settings () {
-    local ch='-'
+     declare -a nv=( \
+      "endpoint=${constrain_url}" \
+      "site=${site_name}" \
+      "host=${page_url_hostport}" \
+      "origin=${page_url_proto}${page_url_hostport}" \
+      "url=${page_url}" \
+      "session=${session_id}" \
+      "user_id=${user_id}" \
+      "user_agent=${user_agent}" \
+      "params=${constrain_params}" \
+   )
 
-    printf -- "\n"
-    printf -- "+-------------+%s+\n" "$(repeat_char 65 $ch)"
-    printf -- "| %-12s| %-64s|\n" "Name" "Value"
-    printf -- "+-------------+%s+\n" "$(repeat_char 65 $ch)"
-    printf -- "| %-12s: %-64s|\n" "endpoint" ${constrain_url}
-    printf -- "| %-12s: %-64s|\n" "site" ${site_name}
-    printf -- "| %-12s: %-64s|\n" "host" "${page_url_hostport}"
-    printf -- "| %-12s: %-64s|\n" "origin" "${page_url_proto}${page_url_hostport}"
-    printf -- "| %-12s: %-64s|\n" "url" ${page_url}
-    printf -- "| %-12s: %-64s|\n" "session" ${session_id}
-    printf -- "| %-12s: %-64s|\n" "user_id" ${user_id}
-    printf -- "| %-12s: %-64s|\n" "user_agent" "${user_agent}"
-    printf -- "| %-12s: %-64s|\n" "params" ${constrain_params}
-    printf -- "+-------------+%s+\n\n" "$(repeat_char 65 $ch)"
+   print_nvc nv
 }
 
 POSITIONAL=()
@@ -51,6 +49,7 @@ do
       ;;
       -r|--request)
       config_file="$2"
+      pas_req=$(abs_path $config_file)
       shift
       shift 
       ;;
@@ -62,12 +61,11 @@ do
 done
 set -- "${POSITIONAL[@]}"
 
-if [[ $config_file == "" ]]
+if [[ -z $config_file ]]
 then
    usage
 fi
 
-pas_req=$(abs_path $config_file)
 
 eval $(parse_yaml ${pas_req})
 eval $(parse_url ${page_url} "page_url_")
