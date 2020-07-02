@@ -1,6 +1,7 @@
 #/bin/bash
 
 . $(dirname "$0")/functions/base.sh
+. $(dirname "$0")/functions/collection.sh
 . $(dirname "$0")/functions/yaml-parser.sh
 . $(dirname "$0")/functions/prettyprint.sh
 
@@ -17,25 +18,6 @@ usage ()
    printf -- "\n"
    exit 1
 }
-
-
-print_params () {
-   declare -a nv=( \
-      "endpoint=${pas_url}" \
-      "site=${site_name}" \
-      "host=${page_url_hostport}" \
-      "placement_id=${placement_id}" \
-      "url=${page_url}" \
-      "audiences=${audiences}" \
-      "user_id=${user_id}" \
-      "user_agent=${user_agent}" \
-      "destination=${destination}" \
-      "params=${pas_params}" \
-   )
-
-   print_nvc nv
-}
-
 
 POSITIONAL=()
 while [[ $# -gt 0 ]]
@@ -72,7 +54,7 @@ fi
 eval $(parse_yaml ${pas_req})
 eval $(parse_url ${page_url} "page_url_")
 
-pas_params=$(str_join "&"  \
+declare -a req_params=( \
    "ctzpid=$(uuidgen)" \
    "alias=${site_name}" \
    "siteId=${site_name}" \
@@ -96,12 +78,24 @@ pas_params=$(str_join "&"  \
    $(if_set "${isOneWay}" "isOneWay=${isOneWay}") \
    )
 
+pas_params=$(array_join "&" req_params)
+
 if [[ "$verbose" == "on" ]]
 then
-   print_params
+   declare -a req_props=( \
+      "endpoint=${pas_url}" \
+      "host=${page_url_hostport}" \
+      "url=${page_url}" \
+      "user_id=${user_id}" \
+      "user_agent=${user_agent}" \
+      "params=${pas_params}" \
+   )
+
+   print_nvc req_params
+   print_nvc req_props
 fi
 
-printf -- "%-14s-> %s\n" "request" "${pas_url}?${pas_params}"
+printf -- "%-14s-> %s\n" "request" "${pas_url}?qa=true${pas_params}"
 printf -- "%-14s<- " "response"
 
 curl  "${pas_url}?${pas_params}" \
