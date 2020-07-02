@@ -52,6 +52,7 @@ do
       ;;
       -r|--request)
       config_file="$2"
+      pas_req=$(abs_path $config_file)
       shift
       shift 
       ;;
@@ -63,12 +64,10 @@ do
 done
 set -- "${POSITIONAL[@]}"
 
-if [[ $config_file == "" ]]
+if [[ -z $config_file ]]
 then
    usage
 fi
-
-pas_req=$(abs_path $config_file)
 
 eval $(parse_yaml ${pas_req})
 eval $(parse_url ${page_url} "page_url_")
@@ -96,7 +95,7 @@ pas_params=$(str_join "&"  \
    $(if_set "${adults}" "adults=${adults}") \
    $(if_set "${isOneWay}" "isOneWay=${isOneWay}") \
    )
-   
+
 if [[ "$verbose" == "on" ]]
 then
    print_params

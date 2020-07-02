@@ -58,6 +58,6 @@ function if_set() {
 }
 
 foreach () { 
-  arr="$(declare -p $1)" ; eval "declare -a f="${arr#*=}; 
-  for i in ${!f[@]}; do $2 "$i" "${f[$i]}"; done
+    arr="$(declare -p $1)" ; eval "declare -a f="${arr#*=};     
+    for i in ${!f[@]}; do $2 "$i" "${f[$i]}"; done
 }

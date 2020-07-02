@@ -18,9 +18,8 @@ function print_nv() {
 
 
 function print_nvc() {
-    local ch='-'
+    local ch='-'; local a; local v; local l; local i
     local nv="$(declare -p $1)" ; eval "declare -a k="${nv#*=};
-    local a; v
 
     printf -- "\n"
     printf -- "+-------------+%s+\n" "$(repeat_char 65 $ch)"
@@ -30,7 +29,14 @@ function print_nvc() {
     do
         a=(${k[$i]/=/ })
         v="${a[@]:1}"
-        printf -- "| %-12s: %-64s|\n" "${a[0]}" "$v"
+        l=${#v}
+        i=0
+        printf -- "| %-12s: %-64s|\n" "${a[0]}" "${v:0:64}"
+        while : ; do
+        i="$(($i + 64))"
+            [[ i -lt l ]] || break
+            printf -- "| %-12s: %-64s|\n" " " "${v:i:64}"
+        done
     done
     printf -- "+-------------+%s+\n\n" "$(repeat_char 65 $ch)"
 }
