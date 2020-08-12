@@ -1,10 +1,10 @@
 #!/bin/bash
 
-endpoint="https://prod-ds-machine-learning.cubaneddie.k8s.clicktripz.io/v1/audience_pricing"
-endpoint="http://localhost:8888/v1/audience_pricing"
+endpoint="https://localhost:8888/v1/audience_pricing"
 
-curl --request POST ${endpoint} \
-        --data-raw "{
+curl -k --request POST ${endpoint}  \
+    -H "Host: prod-ds-machine-learning.cubaneddie.k8s.clicktripz.io" \
+    --data-raw "{
                 \"currentTimestamp\": 1597159444,
                 \"audiences\": {\"typeOne\": [\"21\"]},
                 \"alias\" : \"mapquest\",
