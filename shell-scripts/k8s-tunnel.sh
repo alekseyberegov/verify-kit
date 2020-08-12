@@ -62,4 +62,4 @@ then
   usage
 fi
 
-ssh -i ${key_file} -L ${port}:${service_host}:443 ${user}
+ssh -N -i ${key_file} -L ${port}:${service_host}:443 ${user}
