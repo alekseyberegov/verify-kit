@@ -1,6 +1,6 @@
 ## configuration for the PAS request
 pas_url: "https://www.clicktripz.com/x/pas"
-user_id: "20d1468b-86f0-4932-b230-a712e5de724a"
+user_id: "6530f0d6-1839-42f2-89c4-9e0a1cd6b48e"
 user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 Chrome/83.0.4103.97 Safari/537.36"
 site_name: "nypost"
 page_url: "https://www.nypost.com"

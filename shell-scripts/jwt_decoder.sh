@@ -8,3 +8,6 @@ then
 fi
 
 echo "$1" | cut -d"." -f2 | base64 -d
+printf -- "\n"
+
+
