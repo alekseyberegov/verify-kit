@@ -1,4 +1,7 @@
 #!/bin/bash
+# 
+# You need to have access to a k8s cluster
+# $ kubectl port-forward svc/creative-resolution 8080:80 -n prod-bac
 
 sample_size=100
 temp_file=$(mktemp)
@@ -52,7 +55,8 @@ do
 done
 set -- "${POSITIONAL[@]}"
 
-echo $temp_file
+printf -- "Sending %d requests for %s\n" ${sample_size} ${experiment_name}
+printf -- "Using %s \n" ${temp_file}
 
 for i in $(seq 1 ${sample_size});
 do
