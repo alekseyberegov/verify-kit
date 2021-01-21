@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Config provider
+# ----------------
+# https://config-provider.clicktripz.io/doc
+
 # ----------------------------- 
 #            Steps
 # -----------------------------
@@ -75,7 +79,12 @@ function abs_path() {
 
 function get_json_field()
 {
-    echo $1 | python3 -c "import sys, json; print(json.load(sys.stdin)$2)"
+    echo "$1" | python3 -c "import sys, json; print(json.load(sys.stdin)$2)"
+}
+
+function json_pretty_print() 
+{
+    echo $1 | python3 -m json.tool
 }
 
 function eval_file()
@@ -225,7 +234,7 @@ site_type_1=$(get_json_field "${response}" "['data'][0]['identifiers'][1]['type'
     publisher_alias=${site_key_1}
  fi
 
- cprintf y "publisher alias: ${publisher_alias}"
+ cprintf y "Success: publisher alias: ${publisher_alias}"
  exit 0
 
 ############################
