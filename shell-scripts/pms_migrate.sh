@@ -38,22 +38,6 @@ publisher_config_api="http://localhost:8081/v1/AdServices/config/PublisherConfig
 vendor_config_api="http://localhost:8081/v1/AdServices/config/VendorSolutionConfig"
 ad_services_token_api="http://localhost:8081/v1/AdServices/credentials"
 
-usage ()
-{
-   printf -- "\n"
-   cprintf y "Usage: \n"
-   printf -- "  $0 [OPTIONS]\n\n"
-   printf -- "Migrate the publisher to PMS\n\n"
-   printf -- "Options:\n"
-   printf -- "  -a, --alias alias          %s\n" "publisher's legacy alias"
-   printf -- "  -d, --domain domains        %s\n" "publisher's comma-separated domains"
-   printf -- "  -s, --session file         %s\n" "path to session file"
-   printf -- "  -h, --help                 %s\n" "show help"
-   printf -- "  -v, --verbose              %s\n" "verbose mode"
-   printf -- "\n"
-   exit 1
-}
-
 function cprintf() 
 {
   local code="\033["
@@ -65,6 +49,7 @@ function cprintf()
     blue   |  b) color="${code}1;34m";;
     purple |  p) color="${code}1;35m";;
     cyan   |  c) color="${code}1;36m";;
+    white  |  w) color="${code}1m";;
     gray   | gr) color="${code}0;37m";;
     *) local text="$1"
   esac
@@ -72,6 +57,23 @@ function cprintf()
   echo -e "$text"
 }
 
+usage ()
+{
+   printf -- "\n"
+   cprintf w "Usage: \n"
+   cprintf w "  $0 [OPTIONS]\n\n"
+   printf -- "Migrate the publisher to PMS\n\n"
+   printf -- "Options:\n"
+   printf -- "  -a, --alias alias          %s\n" "publisher's legacy alias"
+   printf -- "  -d, --domain domains       %s\n" "publisher's comma-separated domains"
+   printf -- "  -s, --session file         %s\n" "path to session file"
+   printf -- "  -h, --help                 %s\n" "show help"
+   printf -- "  -v, --verbose              %s\n" "verbose mode"
+   printf -- "\nExample:\n"
+   printf -- "      $0 -a nypost -d \"nypost.com,pagesix.com\" -s ~/pms_session.env\n"
+   printf -- "\n"
+   exit 1
+}
 
 function abs_path() {
     echo "$(cd "$(dirname "$1")"; pwd)/$(basename "$1")"
