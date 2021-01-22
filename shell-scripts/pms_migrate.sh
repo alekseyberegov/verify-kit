@@ -46,7 +46,7 @@ usage ()
    printf -- "Migrate the publisher to PMS\n\n"
    printf -- "Options:\n"
    printf -- "  -a, --alias alias          %s\n" "publisher's legacy alias"
-   printf -- "  -d, --domain domain        %s\n" "publisher's domain"
+   printf -- "  -d, --domain domains        %s\n" "publisher's comma-separated domains"
    printf -- "  -s, --session file         %s\n" "path to session file"
    printf -- "  -h, --help                 %s\n" "show help"
    printf -- "  -v, --verbose              %s\n" "verbose mode"
@@ -339,7 +339,7 @@ do
       shift 
       ;;
       -d|--domain)
-      site_domain="$2"
+      site_domains="$2"
       shift
       shift 
       ;;
@@ -362,9 +362,9 @@ then
     usage
 fi
 
-if [[ -z ${site_domain} ]] 
+if [[ -z ${site_domains} ]] 
 then
-    cprintf r "Error: the site_domain is not specified\n"
+    cprintf r "Error: publisher's domains are not specified\n"
     usage
 fi
 
@@ -381,12 +381,12 @@ response=$(pms_sites clicktripz)
 check_status "Sites" "${response}"
 site_list=$(get_json_field "${response}" "['data']")
 
-for d in $(echo ${site_domain} | sed "s/,/ /g")
+for domain in $(echo "${site_domains}" | sed "s/,/ /g")
 do
-    if [[ "${site_list}" == *"${d}"* ]]
+    if [[ "${site_list}" == *"${domain}"* ]]
     then
         cprintf b "${site_list}\n"
-        cprintf r "Error: The domain ${d} is already used by another organization\n"
+        cprintf r "Error: The domain ${domain} is already used by another organization\n"
         exit 1
     fi
 done
@@ -405,22 +405,22 @@ response=$(create_publisher_config "${organization_id}")
 check_status "PublisherConfig (${organization_id})" "${response}"
 
 # Create Site and VendorSolutionConfig for each domain (eTLD+1)
-for d in $(echo ${site_domain} | sed "s/,/ /g")
+for domain in $(echo ${site_domains} | sed "s/,/ /g")
 do
     # Create Site
-    response=$(create_pms_site ${organization_id} "${d}")
-    check_status "Site (${d} - ${organization_id})" "${response}"
+    response=$(create_pms_site ${organization_id} "${domain}")
+    check_status "Site (${domain} @ ${organization_id})" "${response}"
     publisher_alias=$(parse_publisher_alias "${response}")
 
     # Create VendorSolutionConfig
     conf_object=$(echo ${solution_config} \
             | python3 -c "import sys, json; d=(json.load(sys.stdin)['data']['config']); d['@id']='${publisher_alias}'; print(json.dumps(d))")
     response=$(create_vendor_solution_config "${conf_object}" "${publisher_alias}")
-    check_status "VendorSolutionConfig (${d} - ${publisher_alias})" "${response}"
+    check_status "VendorSolutionConfig (${domain} / ${publisher_alias})" "${response}"
 
     # Patch VendorSolutionConfig with PublisherMetadataModule
     response=$(patch_vendor_solution_config "${publisher_alias}")
-    check_status "PublisherMetadataModule (${d} - ${publisher_alias})" "${response}"
+    check_status "PublisherMetadataModule (${domain} / ${publisher_alias})" "${response}"
 done
 
 
