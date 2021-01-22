@@ -202,6 +202,28 @@ function create_pms_publisher()
 }
 
 #
+# Verifies the given PMS publisher
+#
+# Parameters:
+# -----------
+# $1 - organization_id
+#
+function verify_pms_publisher()
+{
+    local request="{\"isVerified\": true}"
+
+    local response=$(curl -s -X PUT "${publisher_api}/$1" \
+        --header "cookie: ${session_cookies}" \
+        --header 'Content-Type: application/json' \
+        --header 'Accept: application/json' \
+        -d "${request}")
+
+    log_messages "Verify publisher" "${request}" "${response}"
+
+    echo "${response}"
+}
+
+#
 # Creates PMS Site object with the given parameters
 #
 # Parameters:
@@ -227,6 +249,30 @@ function create_pms_site()
         -d "${request}")
 
     log_messages "PMS site" "${request}" "${response}"
+
+    echo "${response}"
+}
+
+#
+# Verifies the given PMS site
+#
+# Parameters:
+# ------------
+# $1 - network id
+# $2 - site id
+# $3 - domain name
+#
+function verify_pms_site()
+{
+    local request="{\"siteDomains\": [ {\"domain\": \"$3\", \"isVerified\": true} ]}"
+
+    local response=$(curl -s -X PUT "${site_api}/$1/$2" \
+        --header "cookie: ${session_cookies}" \
+        --header 'Content-Type: application/json' \
+        --header 'Accept: application/json' \
+        -d "${request}")
+
+    log_messages "Verify site" "${request}" "${response}"
 
     echo "${response}"
 }
@@ -380,7 +426,7 @@ fi
 
 # Make sure that none of given domains is already tied to another publisher
 response=$(pms_sites clicktripz)
-check_status "Sites" "${response}"
+check_status "Get Sites" "${response}"
 site_list=$(get_json_field "${response}" "['data']")
 
 for domain in $(echo "${site_domains}" | sed "s/,/ /g")
@@ -395,34 +441,45 @@ done
 
 # Get VendorSolutionConfig for the integration group
 solution_config=$(vendor_solution_config "${integration_group}")
-check_status "VendorSolutionConfig (${integration_group})" "${solution_config}"
+check_status "Get VendorSolutionConfig (${integration_group})" "${solution_config}"
 
 # Create PMS Publisher
 response=$(create_pms_publisher "${integration_group}")
-check_status "Publisher (${integration_group})" "${response}"
+check_status "Create Publisher (${integration_group})" "${response}"
 organization_id=$(get_json_field "${response}" "['data']['organizationId']")
+
+# Verify PMS publisher
+response=$(verify_pms_publisher "${organization_id}")
+check_status "Verify Publisher (${organization_id})" "${response}"
 
 # Create PublisherConfig
 response=$(create_publisher_config "${organization_id}")
-check_status "PublisherConfig (${organization_id})" "${response}"
+check_status "Create PublisherConfig (${organization_id})" "${response}"
 
 # Create Site and VendorSolutionConfig for each domain (eTLD+1)
 for domain in $(echo ${site_domains} | sed "s/,/ /g")
 do
     # Create Site
     response=$(create_pms_site ${organization_id} "${domain}")
-    check_status "Site (${domain} @ ${organization_id})" "${response}"
+    check_status "Create Site (${domain}, ${organization_id})" "${response}"
+
+    site_id=$(get_json_field "${response}" "['data'][0]['id']")
     publisher_alias=$(parse_publisher_alias "${response}")
+    site_data="${site_id}, ${domain}, ${publisher_alias}"
+
+    # Verify Site
+    response=$(verify_pms_site clicktripz ${site_id} "${domain}")
+    check_status "Verify Site (${site_data})" "${response}"
 
     # Create VendorSolutionConfig
     conf_object=$(echo ${solution_config} \
             | python3 -c "import sys, json; d=(json.load(sys.stdin)['data']['config']); d['@id']='${publisher_alias}'; print(json.dumps(d))")
     response=$(create_vendor_solution_config "${conf_object}" "${publisher_alias}")
-    check_status "VendorSolutionConfig (${domain} / ${publisher_alias})" "${response}"
+    check_status "Create VendorSolutionConfig (${site_data})" "${response}"
 
     # Patch VendorSolutionConfig with PublisherMetadataModule
     response=$(patch_vendor_solution_config "${publisher_alias}")
-    check_status "PublisherMetadataModule (${domain} / ${publisher_alias})" "${response}"
+    check_status "Add PublisherMetadataModule (${site_data})" "${response}"
 done
 
 
