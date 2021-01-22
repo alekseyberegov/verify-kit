@@ -136,8 +136,24 @@ function parse_publisher_alias()
 #
 function ad_services_auth_token()
 {
-    response=$(curl -s -X POST "${ad_services_token_api}" -H "accept: application/json")
+    local response=$(curl -s -X POST "${ad_services_token_api}" -H "accept: application/json")
     echo $(get_json_field "${response}" "['data']['auth-token']")
+}
+
+#
+# Returns a list of PMS sites
+#
+# Parameters:
+# ----------
+# $1 - network id
+#
+function pms_sites()
+{
+    local response=$(curl -s -X GET "${site_api}/$1" \
+        --header "cookie: ${session_cookies}" \
+        --header 'Accept: application/json')
+
+    echo "${response}"
 }
 
 #
@@ -359,6 +375,21 @@ else
     cprintf r "Error: File doesn't exists: ${session_file}\n"
     exit 1
 fi
+
+# Make sure that none of given domains is already tied to another publisher
+response=$(pms_sites clicktripz)
+check_status "Sites" "${response}"
+site_list=$(get_json_field "${response}" "['data']")
+
+for d in $(echo ${site_domain} | sed "s/,/ /g")
+do
+    if [[ "${site_list}" == *"${d}"* ]]
+    then
+        cprintf b "${site_list}\n"
+        cprintf r "Error: The domain ${d} is already used by another organization\n"
+        exit 1
+    fi
+done
 
 # Get VendorSolutionConfig for the integration group
 solution_config=$(vendor_solution_config "${integration_group}")
