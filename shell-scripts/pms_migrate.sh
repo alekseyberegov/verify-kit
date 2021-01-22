@@ -426,7 +426,7 @@ fi
 
 # Make sure that none of given domains is already tied to another publisher
 response=$(pms_sites clicktripz)
-check_status "Get Sites" "${response}"
+check_status "Get_Sites" "${response}"
 site_list=$(get_json_field "${response}" "['data']")
 
 for domain in $(echo "${site_domains}" | sed "s/,/ /g")
@@ -441,27 +441,27 @@ done
 
 # Get VendorSolutionConfig for the integration group
 solution_config=$(vendor_solution_config "${integration_group}")
-check_status "Get VendorSolutionConfig (${integration_group})" "${solution_config}"
+check_status "Get_VendorSolutionConfig(${integration_group})" "${solution_config}"
 
 # Create PMS Publisher
 response=$(create_pms_publisher "${integration_group}")
-check_status "Create Publisher (${integration_group})" "${response}"
+check_status "Create_Publisher(${integration_group})" "${response}"
 organization_id=$(get_json_field "${response}" "['data']['organizationId']")
 
 # Verify PMS publisher
 response=$(verify_pms_publisher "${organization_id}")
-check_status "Verify Publisher (${organization_id})" "${response}"
+check_status "Verify_Publisher(${organization_id})" "${response}"
 
 # Create PublisherConfig
 response=$(create_publisher_config "${organization_id}")
-check_status "Create PublisherConfig (${organization_id})" "${response}"
+check_status "Create_PublisherConfig(${organization_id})" "${response}"
 
 # Create Site and VendorSolutionConfig for each domain (eTLD+1)
 for domain in $(echo ${site_domains} | sed "s/,/ /g")
 do
     # Create Site
     response=$(create_pms_site ${organization_id} "${domain}")
-    check_status "Create Site (${domain}, ${organization_id})" "${response}"
+    check_status "Create_Site(${domain}, ${organization_id})" "${response}"
 
     site_id=$(get_json_field "${response}" "['data'][0]['id']")
     publisher_alias=$(parse_publisher_alias "${response}")
@@ -469,17 +469,17 @@ do
 
     # Verify Site
     response=$(verify_pms_site clicktripz ${site_id} "${domain}")
-    check_status "Verify Site (${site_data})" "${response}"
+    check_status "Verify_Site(${site_data})" "${response}"
 
     # Create VendorSolutionConfig
     conf_object=$(echo ${solution_config} \
             | python3 -c "import sys, json; d=(json.load(sys.stdin)['data']['config']); d['@id']='${publisher_alias}'; print(json.dumps(d))")
     response=$(create_vendor_solution_config "${conf_object}" "${publisher_alias}")
-    check_status "Create VendorSolutionConfig (${site_data})" "${response}"
+    check_status "Create_VendorSolutionConfig(${site_data})" "${response}"
 
     # Patch VendorSolutionConfig with PublisherMetadataModule
     response=$(patch_vendor_solution_config "${publisher_alias}")
-    check_status "Add PublisherMetadataModule (${site_data})" "${response}"
+    check_status "Add_PublisherMetadataModule(${site_data})" "${response}"
 done
 
 
