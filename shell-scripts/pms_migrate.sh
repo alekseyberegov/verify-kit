@@ -1,15 +1,5 @@
 #!/bin/bash
 
-# ----------------------------- 
-#            Steps
-# -----------------------------
-# 1. Create Publisher 
-# 2. Create Site
-# 3. Create PublisherConfig
-# 4. Create VendorSolutionConfig
-# 5. Add PublisherMetadataModule to the VendorSolutionConfig
-# 6. Set legacyPublisherAlias
-
 # ------------------
 # Swagger operations
 # ------------------
@@ -48,7 +38,6 @@ publisher_config_api="http://localhost:8081/v1/AdServices/config/PublisherConfig
 vendor_config_api="http://localhost:8081/v1/AdServices/config/VendorSolutionConfig"
 ad_services_token_api="http://localhost:8081/v1/AdServices/credentials"
 
-
 usage ()
 {
    printf -- "\n"
@@ -63,12 +52,6 @@ usage ()
    printf -- "  -v, --verbose              %s\n" "verbose mode"
    printf -- "\n"
    exit 1
-}
-
-function out()
-{
-    s="'$*'"
-    printf -- "$s"
 }
 
 function cprintf() 
@@ -109,31 +92,44 @@ function eval_file()
     eval $(< $1)
 }
 
-function replace_macro()
-{
-    echo $1 | sed -e "s/\${$2}/$3/" 
-}
-
-function log_msg_exchange()
+function log_messages()
 {
     cprintf   "$1 << $2" >&2
     cprintf b "$1 >> $3" >&2
 }
 
-function check_response_status()
+function check_status()
 {
-    status=$(get_json_field "$2" "['status']")
-
-    if [[ "${status}" == "fail" ]]
+    if [[ $2 == *"status"* ]]; 
     then
-        cprintf r "Error: $1 $2" >&2
-        exit 1
-    else 
-        cprintf g "Success: $1\n" >&2
+        local status=$(get_json_field "$2" "['status']")
+
+        if [[ "${status}" == "success" ]]
+        then
+            cprintf g "Success: $1\n" >&2
+            return
+        fi
     fi
+
+    cprintf r "Error: $1 $2\n" >&2
+    exit 1
 }
 
-############################################################################################
+
+function parse_publisher_alias()
+{
+    for i in {0..1}; 
+    do 
+        local key_type=$(get_json_field "$1" "['data'][0]['identifiers'][$i]['type']")
+
+        if [[ "${key_type}" == "publisherAlias" ]]
+        then
+            local publisher_alias=$(get_json_field "$1" "['data'][0]['identifiers'][$i]['siteKey']")
+        fi
+    done
+    
+    echo "${publisher_alias}"
+}
 
 #
 # Generates an authentication token
@@ -153,14 +149,14 @@ function ad_services_auth_token()
 #
 function vendor_solution_config()
 {
-    auth_token=$(ad_services_auth_token)
+    local auth_token=$(ad_services_auth_token)
 
-    response=$(curl -s "${vendor_config_api}/$1" \
+    local response=$(curl -s "${vendor_config_api}/$1" \
         -H "auth-token: ${auth_token}" \
         -H "Authorization: bearer ${auth_token}" \
         -H "accept: application/json")
 
-    log_msg_exchange "VendorSolutionConfig" "$1" "${response}"
+    log_messages "VendorSolutionConfig" "$1" "${response}"
 
     echo "${response}"
 }
@@ -174,15 +170,15 @@ function vendor_solution_config()
 #
 function create_pms_publisher()
 {
-    request="{\"displayName\": \"Legacy ${1}\"}"
+    local request="{\"displayName\": \"Legacy ${1}\"}"
 
-    response=$(curl -s -X POST ${publisher_api} \
+    local response=$(curl -s -X POST ${publisher_api} \
         --header "cookie: ${session_cookies}" \
         --header 'Content-Type: application/json' \
         --header 'Accept: application/json' \
         -d "${request}")
 
-    log_msg_exchange "PMS publisher" "${request}" "${response}"
+    log_messages "PMS publisher" "${request}" "${response}"
 
     echo "${response}"
 }
@@ -197,7 +193,7 @@ function create_pms_publisher()
 #
 function create_pms_site()
 {
-    request="{ \
+    local request="{ \
         \"siteName\": \"$2\", \
         \"organizationId\": $1, \
         \"displayName\": \"$2\", \
@@ -206,13 +202,13 @@ function create_pms_site()
         \"siteDomains\": [{\"domain\": \"$2\"}] \
     }"
 
-    response=$(curl -s -X POST  ${site_api} \
+    local response=$(curl -s -X POST  ${site_api} \
         --header "cookie: ${session_cookies}" \
         --header 'Content-Type: application/json'  \
         --header 'Accept: application/json' \
         -d "${request}")
 
-    log_msg_exchange "PMS site" "${request}" "${response}"
+    log_messages "PMS site" "${request}" "${response}"
 
     echo "${response}"
 }
@@ -226,24 +222,24 @@ function create_pms_site()
 #
 function create_publisher_config()
 {
-    auth_token=$(ad_services_auth_token)
+    local auth_token=$(ad_services_auth_token)
 
-    request="{ \
+    local request="{ \
         \"@type\":\"PublisherConfig\", \
         \"@id\": \"$1\", \
         \"serviceModuleConfigs\": [] \
     }"
 
-    params=(-s -L -X POST "${publisher_config_api}/$1" \
+    local params=(-s -L -X POST "${publisher_config_api}/$1" \
         -H "accept: application/json" \
         -H "auth-token: ${auth_token}" \
         -H "Authorization: bearer ${auth_token}" \
         -H "Content-Type: application/json" \
         -d "${request}")
 
-    response=$(curl "${params[@]}")
+    local response=$(curl "${params[@]}")
 
-    log_msg_exchange "PublisherConfig" "${request}" "${response}"
+    log_messages "PublisherConfig" "${request}" "${response}"
 
     echo "${response}"
 }
@@ -258,16 +254,16 @@ function create_publisher_config()
 #
 function create_vendor_solution_config()
 {
-    auth_token=$(ad_services_auth_token)
+    local auth_token=$(ad_services_auth_token)
 
-    response=$(curl -s -X POST "${vendor_config_api}/$2" \
+    local response=$(curl -s -X POST "${vendor_config_api}/$2" \
         -H "accept: application/json"  \
         -H "Content-Type: application/json" \
         -H "auth-token: ${auth_token}" \
         -H "Authorization: bearer ${auth_token}" \
         -d "$1")
 
-    log_msg_exchange "VendorSolutionConfig" "$1" "${response}"
+    log_messages "VendorSolutionConfig" "$1" "${response}"
     
     echo "${response}"
 }
@@ -280,7 +276,7 @@ function create_vendor_solution_config()
 #
 function patch_vendor_solution_config()
 {
-    request="{ \
+    local request="{ \
         \"patch\": [{ \
                 \"op\": \"add\", \
                 \"path\": \"/serviceModuleConfigs/-\", \
@@ -293,20 +289,19 @@ function patch_vendor_solution_config()
             }] \
     }"
 
-    auth_token=$(ad_services_auth_token)
+    local auth_token=$(ad_services_auth_token)
 
-    response=$(curl -s -X PATCH "${vendor_config_api}/$1" \
+    local response=$(curl -s -X PATCH "${vendor_config_api}/$1" \
         -H "accept: application/json"  \
         -H "Content-Type: application/json" \
         -H "auth-token: ${auth_token}" \
         -H "Authorization: bearer ${auth_token}" \
         -d "${request}")
 
-    log_msg_exchange "VendorSolutionConfig-patch" "${request}" "${response}"
+    log_messages "VendorSolutionConfig-patch" "${request}" "${response}"
 
     echo "${response}"
 }
-############################################################################################
 
 # Parse the command line parameters
 POSITIONAL=()
@@ -347,13 +342,13 @@ set -- "${POSITIONAL[@]}"
 
 if [[ -z ${integration_group} ]] 
 then
-    printf -- "Missing: the alias is not defined\n"
+    cprintf r "Error: the alias is not specified\n"
     usage
 fi
 
 if [[ -z ${site_domain} ]] 
 then
-    printf -- "Missing: the site_domain is not defined\n"
+    cprintf r "Error: the site_domain is not specified\n"
     usage
 fi
 
@@ -361,66 +356,41 @@ if [ -f "${session_file}" ]; then
     eval_file "${session_file}"
     session_cookies="PHPSESSID=${PHPSESSID}; AWSALB=${AWSALB}; AWSALBCORS=${AWSALB};"
 else 
-    printf -- "File doesn't exists: %s\n" ${session_file}
+    cprintf r "Error: File doesn't exists: ${session_file}\n"
     exit 1
 fi
 
-# =============================================================================
-# 0. Get VendorSolutionConfig for the integration group
-# =============================================================================
+# Get VendorSolutionConfig for the integration group
 solution_config=$(vendor_solution_config "${integration_group}")
-check_response_status "VendorSolutionConfig" "${solution_config}"
+check_status "VendorSolutionConfig (${integration_group})" "${solution_config}"
 
-# =============================================================================
-# 1. Create Publisher
-# =============================================================================
+# Create PMS Publisher
 response=$(create_pms_publisher "${integration_group}")
-check_response_status "PMS publisher" "${response}"
-
+check_status "Publisher (${integration_group})" "${response}"
 organization_id=$(get_json_field "${response}" "['data']['organizationId']")
- publisher_hash=$(get_json_field "${response}" "['data']['publisherHash']")
 
-# =============================================================================
-# 2. Create Site
-# =============================================================================
-#
-# Execute a separate request for every domain (eTLD+1)
-#
-response=$(create_pms_site ${organization_id} "${site_domain}")
-check_response_status "PMS site" "${response}"
-
-site_type_0=$(get_json_field "${response}" "['data'][0]['identifiers'][0]['type']")
-site_type_1=$(get_json_field "${response}" "['data'][0]['identifiers'][1]['type']")
- site_key_0=$(get_json_field "${response}" "['data'][0]['identifiers'][0]['siteKey']")
- site_key_1=$(get_json_field "${response}" "['data'][0]['identifiers'][1]['siteKey']")
- 
- if [[ "${site_type_0}" == "publisherAlias" ]]
- then
-    publisher_alias=${site_key_0}
- fi
- if [[ "${site_type_1}" == "publisherAlias" ]]
- then
-    publisher_alias=${site_key_1}
- fi
-
-# =============================================================================
-# 3. Create PublisherConfig
-# =============================================================================
+# Create PublisherConfig
 response=$(create_publisher_config "${organization_id}")
-check_response_status "PublisherConfig" "${response}"
+check_status "PublisherConfig (${organization_id})" "${response}"
 
-# =============================================================================
-# 4. Create VendorSolutionConfig
-# =============================================================================
-#
-solution_config=$(echo ${solution_config} \
-        | python3 -c "import sys, json; d=(json.load(sys.stdin)['data']['config']); d['@id']='${publisher_alias}'; print(json.dumps(d))")
+# Create Site and VendorSolutionConfig for each domain (eTLD+1)
+for d in $(echo ${site_domain} | sed "s/,/ /g")
+do
+    # Create Site
+    response=$(create_pms_site ${organization_id} "${d}")
+    check_status "Site (${d} - ${organization_id})" "${response}"
+    publisher_alias=$(parse_publisher_alias "${response}")
 
-response=$(create_vendor_solution_config "${solution_config}" "${publisher_alias}")
-check_response_status "VendorSolutionConfig" "${response}"
+    # Create VendorSolutionConfig
+    conf_object=$(echo ${solution_config} \
+            | python3 -c "import sys, json; d=(json.load(sys.stdin)['data']['config']); d['@id']='${publisher_alias}'; print(json.dumps(d))")
+    response=$(create_vendor_solution_config "${conf_object}" "${publisher_alias}")
+    check_status "VendorSolutionConfig (${d} - ${publisher_alias})" "${response}"
 
-# =============================================================================
-# 5. Patch VendorSolutionConfig with PublisherMetadataModule
-# =============================================================================
-response=$(patch_vendor_solution_config "${publisher_alias}")
-check_response_status "VendorSolutionConfig-patch" "${response}"
+    # Patch VendorSolutionConfig with PublisherMetadataModule
+    response=$(patch_vendor_solution_config "${publisher_alias}")
+    check_status "PublisherMetadataModule (${d} - ${publisher_alias})" "${response}"
+done
+
+
+

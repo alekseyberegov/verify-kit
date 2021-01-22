@@ -1,5 +1,14 @@
 #/bin/bash
 
+function print_args() {
+    s="'$*'"
+    printf -- "$s"
+}
+
+function replace_macro() {
+    echo $1 | sed -e "s/\${$2}/$3/" 
+}
+
 parse_url() {
     local prefix=$2
 
