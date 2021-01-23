@@ -81,12 +81,12 @@ function abs_path() {
 
 function get_json_field()
 {
-    echo "$1" | python3 -c "import sys, json; print(json.load(sys.stdin)$2)"
+    echo "$1" | python3 -c "import sys, json; print($3(json.load(sys.stdin)$2))"
 }
 
-function json_pretty_print() 
+function set_json_field()
 {
-    echo $1 | python3 -m json.tool
+  echo $1 | python3 -c "import sys, json; o=json.load(sys.stdin); o$2=$3; print(json.dumps(o))"
 }
 
 function eval_file()
@@ -104,10 +104,22 @@ function eval_file()
 function log()
 {
     local level=$1; shift
+
+     case "${level}" in
+        error)
+        args="r"
+        ;;
+        info)
+        args="g"
+        ;;
+        *)
+        args=""
+        ;;
+     esac
     
     for param in "$@"
     do
-        cprintf  "${level}: ${FUNCNAME[1]} ${param}" >&2
+        cprintf $args "[${FUNCNAME[1]}] ${level}: ${param}" >&2
     done    
 }
 
@@ -119,29 +131,36 @@ function check_status()
 
         if [[ "${status}" == "success" ]]
         then
-            cprintf g "Success: $1\n" >&2
+            log info "success: $1"
             return
         fi
     fi
 
-    cprintf r "Error: $1 $2\n" >&2
+    log error "$*"
     exit 1
 }
 
-
-function parse_publisher_alias()
+#
+# Returns a site key for the given key type
+#
+# Parameters:
+# -----------
+# $1 - site key type
+# $2 - site object in JSON format
+#
+function site_key()
 {
     for i in {0..1}; 
     do 
-        local key_type=$(get_json_field "$1" "['data'][0]['identifiers'][$i]['type']")
+        local key_type=$(get_json_field "$2" "['data'][0]['identifiers'][$i]['type']")
 
-        if [[ "${key_type}" == "publisherAlias" ]]
+        if [[ "${key_type}" == "$1" ]]
         then
-            local publisher_alias=$(get_json_field "$1" "['data'][0]['identifiers'][$i]['siteKey']")
+            local key_value=$(get_json_field "$2" "['data'][0]['identifiers'][$i]['siteKey']")
         fi
     done
     
-    echo "${publisher_alias}"
+    echo "${key_value}"
 }
 
 #
@@ -185,7 +204,7 @@ function vendor_solution_config()
         -H "Authorization: bearer ${auth_token}" \
         -H "accept: application/json")
 
-    log info "$1" "${response}"
+    log debug "$1" "${response}"
 
     echo "${response}"
 }
@@ -207,7 +226,7 @@ function create_pms_publisher()
         --header 'Accept: application/json' \
         -d "${request}")
 
-    log info "${request}" "${response}"
+    log debug "${request}" "${response}"
 
     echo "${response}"
 }
@@ -229,7 +248,7 @@ function verify_pms_publisher()
         --header 'Accept: application/json' \
         -d "${request}")
 
-    log info "${request}" "${response}"
+    log debug "${request}" "${response}"
 
     echo "${response}"
 }
@@ -259,7 +278,7 @@ function create_pms_site()
         --header 'Accept: application/json' \
         -d "${request}")
 
-    log info "${request}" "${response}"
+    log debug "${request}" "${response}"
 
     echo "${response}"
 }
@@ -283,7 +302,7 @@ function verify_pms_site()
         --header 'Accept: application/json' \
         -d "${request}")
 
-    log info "${request}" "${response}"
+    log debug "${request}" "${response}"
 
     echo "${response}"
 }
@@ -314,7 +333,7 @@ function create_publisher_config()
 
     local response=$(curl "${params[@]}")
 
-    log info "${request}" "${response}"
+    log debug "${request}" "${response}"
 
     echo "${response}"
 }
@@ -338,7 +357,7 @@ function create_vendor_solution_config()
         -H "Authorization: bearer ${auth_token}" \
         -d "$1")
 
-    log info "$1" "${response}"
+    log debug "$1" "${response}"
     
     echo "${response}"
 }
@@ -373,7 +392,7 @@ function patch_vendor_solution_config()
         -H "Authorization: bearer ${auth_token}" \
         -d "${request}")
 
-    log info "${request}" "${response}"
+    log debug "${request}" "${response}"
 
     echo "${response}"
 }
@@ -387,23 +406,28 @@ function send()
 
 function main()
 {
+    # Create an authenticated session for PMS
+    eval_file "${session_file}"
+    session_cookies="PHPSESSID=${PHPSESSID}; AWSALB=${AWSALB}; AWSALBCORS=${AWSALB};"
+
     # Make sure that none of given domains is already tied to another publisher
     response=$(send pms_sites clicktripz)
     site_list=$(get_json_field "${response}" "['data']")
 
-    for domain in $(echo "${site_domains}" | sed "s/,/ /g")
+    domain_list=$(echo "${site_domains}" | sed "s/,/ /g")
+    for domain in ${domain_list}
     do
         if [[ "${site_list}" == *"${domain}"* ]]
         then
-            cprintf b "${site_list}\n"
-            cprintf r "Error:  The domain ${domain} is already used by another organization\n"
+            log error "The domain ${domain} is already used by another organization"
             exit 1
         fi
     done
 
     # Get VendorSolutionConfig for the integration group
-    solution_config=$(send vendor_solution_config "${integration_group}")
-
+    response=$(send vendor_solution_config "${integration_group}")
+    solution_config=$(get_json_field "${response}" "['data']['config']" "json.dumps")
+  
     # Create Publisher
     response=$(send create_pms_publisher "${integration_group}")
     organization_id=$(get_json_field "${response}" "['data']['organizationId']")
@@ -415,23 +439,22 @@ function main()
     response=$(send create_publisher_config "${organization_id}")
 
     # Create Site and VendorSolutionConfig for each domain (eTLD+1)
-    for domain in $(echo ${site_domains} | sed "s/,/ /g")
+    for domain in $domain_list
     do
         # Create Site
         response=$(send create_pms_site ${organization_id} "${domain}")
+
+        # Get site's fields
         site_id=$(get_json_field "${response}" "['data'][0]['id']")
-        publisher_alias=$(parse_publisher_alias "${response}")
+        site_alias=$(site_key publisherAlias "${response}")
+        site_config=$(set_json_field "${solution_config}" "['@id']" "'${site_alias}'")
 
         # Verify Site
         response=$(send verify_pms_site clicktripz ${site_id} "${domain}")
 
-        # Create VendorSolutionConfig
-        conf_object=$(echo ${solution_config} \
-                | python3 -c "import sys, json; d=(json.load(sys.stdin)['data']['config']); d['@id']='${publisher_alias}'; print(json.dumps(d))")
-        response=$(send create_vendor_solution_config "${conf_object}" "${publisher_alias}")
-
-        # Patch VendorSolutionConfig with PublisherMetadataModule
-        response=$(send patch_vendor_solution_config "${publisher_alias}")
+        # Create VendorSolutionConfig and patch it with PublisherMetadataModule
+        response=$(send create_vendor_solution_config "${site_config}" "${site_alias}")
+        response=$(send patch_vendor_solution_config "${site_alias}")
     done
 }
 
@@ -473,28 +496,32 @@ function parse_args()
     esac
     done
     set -- "${POSITIONAL[@]}"
+}
 
+function validate_args()
+{
     if [[ -z ${integration_group} ]] 
     then
-        cprintf r "Error: the alias is not specified\n"
+        log error "The alias is not specified"
         usage
     fi
 
     if [[ -z ${site_domains} ]] 
     then
-        cprintf r "Error: publisher's domains are not specified\n"
+        log error "Publisher's domains are not specified"
         usage
     fi
 
-    if [ -f "${session_file}" ]; then
-        eval_file "${session_file}"
-        session_cookies="PHPSESSID=${PHPSESSID}; AWSALB=${AWSALB}; AWSALBCORS=${AWSALB};"
-    else 
-        cprintf r "Error: File doesn't exists: ${session_file}\n"
-        exit 1
+    if [ ! -f "${session_file}" ]; then
+        log error "File doesn't exists: \"${session_file}\""
+        usage
     fi
 }
 
+# =======================================================
+#                      ENTRY POINT
+# =======================================================
 parse_args "$@"
+validate_args
 main
 
