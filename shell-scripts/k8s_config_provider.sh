@@ -1,10 +1,11 @@
 #!/bin/bash
 
 trap ctrl_c INT
+trap ctrl_c SIGINT
 
 function ctrl_c() 
 {
-    printf -- "Killing keep-alive PID=%d\n" $pid
+    printf -- "${FUNCNAME[0]} Killing keep-alive PID=%d\n" $pid
     kill $pid >/dev/null 2>&1
 }
 

@@ -93,11 +93,22 @@ function eval_file()
 {
     eval $(< $1)
 }
-
-function log_messages()
+#
+# Logs specified input arguments
+#
+# Parameters:
+# -----------
+# $1 - level (info|debug|error)
+# .. - arguments to be logged
+#
+function log()
 {
-    cprintf   "$1 << $2" >&2
-    cprintf b "$1 >> $3" >&2
+    local level=$1; shift
+    
+    for param in "$@"
+    do
+        cprintf  "${level}: ${FUNCNAME[1]} ${param}" >&2
+    done
 }
 
 function check_status()
@@ -174,7 +185,7 @@ function vendor_solution_config()
         -H "Authorization: bearer ${auth_token}" \
         -H "accept: application/json")
 
-    log_messages "VendorSolutionConfig" "$1" "${response}"
+    log info "$1" "${response}"
 
     echo "${response}"
 }
@@ -196,7 +207,7 @@ function create_pms_publisher()
         --header 'Accept: application/json' \
         -d "${request}")
 
-    log_messages "PMS publisher" "${request}" "${response}"
+    log info "${request}" "${response}"
 
     echo "${response}"
 }
@@ -218,7 +229,7 @@ function verify_pms_publisher()
         --header 'Accept: application/json' \
         -d "${request}")
 
-    log_messages "Verify publisher" "${request}" "${response}"
+    log info "${request}" "${response}"
 
     echo "${response}"
 }
@@ -248,7 +259,7 @@ function create_pms_site()
         --header 'Accept: application/json' \
         -d "${request}")
 
-    log_messages "PMS site" "${request}" "${response}"
+    log info "${request}" "${response}"
 
     echo "${response}"
 }
@@ -272,7 +283,7 @@ function verify_pms_site()
         --header 'Accept: application/json' \
         -d "${request}")
 
-    log_messages "Verify site" "${request}" "${response}"
+    log info "${request}" "${response}"
 
     echo "${response}"
 }
@@ -303,7 +314,7 @@ function create_publisher_config()
 
     local response=$(curl "${params[@]}")
 
-    log_messages "PublisherConfig" "${request}" "${response}"
+    log info "${request}" "${response}"
 
     echo "${response}"
 }
@@ -327,7 +338,7 @@ function create_vendor_solution_config()
         -H "Authorization: bearer ${auth_token}" \
         -d "$1")
 
-    log_messages "VendorSolutionConfig" "$1" "${response}"
+    log info "$1" "${response}"
     
     echo "${response}"
 }
@@ -362,125 +373,132 @@ function patch_vendor_solution_config()
         -H "Authorization: bearer ${auth_token}" \
         -d "${request}")
 
-    log_messages "VendorSolutionConfig-patch" "${request}" "${response}"
+    log info "${request}" "${response}"
 
     echo "${response}"
 }
 
-# Parse the command line parameters
-POSITIONAL=()
-while [[ $# -gt 0 ]]
-do
-   key="$1"
+function main()
+{
+    # Make sure that none of given domains is already tied to another publisher
+    response=$(pms_sites clicktripz)
+    check_status "pms_sites" "${response}"
+    site_list=$(get_json_field "${response}" "['data']")
 
-   case $key in
-      -h|--help)
-      usage
-      ;;
-      -v|--verbose)
-      verbose="on"
-      shift
-      ;;
-      -a|--alias)
-      integration_group="$2"
-      shift
-      shift 
-      ;;
-      -d|--domain)
-      site_domains="$2"
-      shift
-      shift 
-      ;;
-      -s|--session)
-      session_file=$(abs_path $2)
-      shift
-      shift 
-      ;;
-      *)
-      POSITIONAL+=("$1") 
-      shift 
-      ;;
-   esac
-done
-set -- "${POSITIONAL[@]}"
+    for domain in $(echo "${site_domains}" | sed "s/,/ /g")
+    do
+        if [[ "${site_list}" == *"${domain}"* ]]
+        then
+            cprintf b "${site_list}\n"
+            cprintf r "Error:  The domain ${domain} is already used by another organization\n"
+            exit 1
+        fi
+    done
 
-if [[ -z ${integration_group} ]] 
-then
-    cprintf r "Error: the alias is not specified\n"
-    usage
-fi
+    # Get VendorSolutionConfig for the integration group
+    solution_config=$(vendor_solution_config "${integration_group}")
+    check_status "vendor_solution_config(${integration_group})" "${solution_config}"
 
-if [[ -z ${site_domains} ]] 
-then
-    cprintf r "Error: publisher's domains are not specified\n"
-    usage
-fi
+    # Create Publisher
+    response=$(create_pms_publisher "${integration_group}")
+    check_status "create_pms_publisher(${integration_group})" "${response}"
+    organization_id=$(get_json_field "${response}" "['data']['organizationId']")
 
-if [ -f "${session_file}" ]; then
-    eval_file "${session_file}"
-    session_cookies="PHPSESSID=${PHPSESSID}; AWSALB=${AWSALB}; AWSALBCORS=${AWSALB};"
-else 
-    cprintf r "Error: File doesn't exists: ${session_file}\n"
-    exit 1
-fi
+    # Verify publisher
+    response=$(verify_pms_publisher "${organization_id}")
+    check_status "verify_pms_publisher(${organization_id})" "${response}"
 
-# Make sure that none of given domains is already tied to another publisher
-response=$(pms_sites clicktripz)
-check_status "Get_Sites" "${response}"
-site_list=$(get_json_field "${response}" "['data']")
+    # Create PublisherConfig
+    response=$(create_publisher_config "${organization_id}")
+    check_status "create_publisher_config(${organization_id})" "${response}"
 
-for domain in $(echo "${site_domains}" | sed "s/,/ /g")
-do
-    if [[ "${site_list}" == *"${domain}"* ]]
+    # Create Site and VendorSolutionConfig for each domain (eTLD+1)
+    for domain in $(echo ${site_domains} | sed "s/,/ /g")
+    do
+        # Create Site
+        response=$(create_pms_site ${organization_id} "${domain}")
+        check_status "create_pms_site(${domain}, ${organization_id})" "${response}"
+
+        site_id=$(get_json_field "${response}" "['data'][0]['id']")
+        publisher_alias=$(parse_publisher_alias "${response}")
+        site_data="${site_id}, ${domain}, ${publisher_alias}"
+
+        # Verify Site
+        response=$(verify_pms_site clicktripz ${site_id} "${domain}")
+        check_status "verify_pms_site(${site_data})" "${response}"
+
+        # Create VendorSolutionConfig
+        conf_object=$(echo ${solution_config} \
+                | python3 -c "import sys, json; d=(json.load(sys.stdin)['data']['config']); d['@id']='${publisher_alias}'; print(json.dumps(d))")
+        response=$(create_vendor_solution_config "${conf_object}" "${publisher_alias}")
+        check_status "create_vendor_solution_config(${site_data})" "${response}"
+
+        # Patch VendorSolutionConfig with PublisherMetadataModule
+        response=$(patch_vendor_solution_config "${publisher_alias}")
+        check_status "patch_vendor_solution_config(${site_data})" "${response}"
+    done
+}
+
+function parse_args()
+{
+    # Parse the command line parameters
+    POSITIONAL=()
+    while [[ $# -gt 0 ]]
+    do
+    key="$1"
+
+    case $key in
+        -h|--help)
+        usage
+        ;;
+        -v|--verbose)
+        verbose="on"
+        shift
+        ;;
+        -a|--alias)
+        integration_group="$2"
+        shift
+        shift 
+        ;;
+        -d|--domain)
+        site_domains="$2"
+        shift
+        shift 
+        ;;
+        -s|--session)
+        session_file=$(abs_path $2)
+        shift
+        shift 
+        ;;
+        *)
+        POSITIONAL+=("$1") 
+        shift 
+        ;;
+    esac
+    done
+    set -- "${POSITIONAL[@]}"
+
+    if [[ -z ${integration_group} ]] 
     then
-        cprintf b "${site_list}\n"
-        cprintf r "Error: The domain ${domain} is already used by another organization\n"
+        cprintf r "Error: the alias is not specified\n"
+        usage
+    fi
+
+    if [[ -z ${site_domains} ]] 
+    then
+        cprintf r "Error: publisher's domains are not specified\n"
+        usage
+    fi
+
+    if [ -f "${session_file}" ]; then
+        eval_file "${session_file}"
+        session_cookies="PHPSESSID=${PHPSESSID}; AWSALB=${AWSALB}; AWSALBCORS=${AWSALB};"
+    else 
+        cprintf r "Error: File doesn't exists: ${session_file}\n"
         exit 1
     fi
-done
+}
 
-# Get VendorSolutionConfig for the integration group
-solution_config=$(vendor_solution_config "${integration_group}")
-check_status "Get_VendorSolutionConfig(${integration_group})" "${solution_config}"
-
-# Create PMS Publisher
-response=$(create_pms_publisher "${integration_group}")
-check_status "Create_Publisher(${integration_group})" "${response}"
-organization_id=$(get_json_field "${response}" "['data']['organizationId']")
-
-# Verify PMS publisher
-response=$(verify_pms_publisher "${organization_id}")
-check_status "Verify_Publisher(${organization_id})" "${response}"
-
-# Create PublisherConfig
-response=$(create_publisher_config "${organization_id}")
-check_status "Create_PublisherConfig(${organization_id})" "${response}"
-
-# Create Site and VendorSolutionConfig for each domain (eTLD+1)
-for domain in $(echo ${site_domains} | sed "s/,/ /g")
-do
-    # Create Site
-    response=$(create_pms_site ${organization_id} "${domain}")
-    check_status "Create_Site(${domain}, ${organization_id})" "${response}"
-
-    site_id=$(get_json_field "${response}" "['data'][0]['id']")
-    publisher_alias=$(parse_publisher_alias "${response}")
-    site_data="${site_id}, ${domain}, ${publisher_alias}"
-
-    # Verify Site
-    response=$(verify_pms_site clicktripz ${site_id} "${domain}")
-    check_status "Verify_Site(${site_data})" "${response}"
-
-    # Create VendorSolutionConfig
-    conf_object=$(echo ${solution_config} \
-            | python3 -c "import sys, json; d=(json.load(sys.stdin)['data']['config']); d['@id']='${publisher_alias}'; print(json.dumps(d))")
-    response=$(create_vendor_solution_config "${conf_object}" "${publisher_alias}")
-    check_status "Create_VendorSolutionConfig(${site_data})" "${response}"
-
-    # Patch VendorSolutionConfig with PublisherMetadataModule
-    response=$(patch_vendor_solution_config "${publisher_alias}")
-    check_status "Add_PublisherMetadataModule(${site_data})" "${response}"
-done
-
-
+parse_args "$@"
+main
 
