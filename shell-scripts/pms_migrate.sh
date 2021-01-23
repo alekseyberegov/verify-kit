@@ -108,7 +108,7 @@ function log()
     for param in "$@"
     do
         cprintf  "${level}: ${FUNCNAME[1]} ${param}" >&2
-    done
+    done    
 }
 
 function check_status()
@@ -378,11 +378,17 @@ function patch_vendor_solution_config()
     echo "${response}"
 }
 
+function send() 
+{
+    local response=$("$@")
+    check_status "$*" "${response}"
+    echo "${response}"
+} 
+
 function main()
 {
     # Make sure that none of given domains is already tied to another publisher
-    response=$(pms_sites clicktripz)
-    check_status "pms_sites" "${response}"
+    response=$(send pms_sites clicktripz)
     site_list=$(get_json_field "${response}" "['data']")
 
     for domain in $(echo "${site_domains}" | sed "s/,/ /g")
@@ -396,46 +402,36 @@ function main()
     done
 
     # Get VendorSolutionConfig for the integration group
-    solution_config=$(vendor_solution_config "${integration_group}")
-    check_status "vendor_solution_config(${integration_group})" "${solution_config}"
+    solution_config=$(send vendor_solution_config "${integration_group}")
 
     # Create Publisher
-    response=$(create_pms_publisher "${integration_group}")
-    check_status "create_pms_publisher(${integration_group})" "${response}"
+    response=$(send create_pms_publisher "${integration_group}")
     organization_id=$(get_json_field "${response}" "['data']['organizationId']")
 
     # Verify publisher
-    response=$(verify_pms_publisher "${organization_id}")
-    check_status "verify_pms_publisher(${organization_id})" "${response}"
+    response=$(send verify_pms_publisher "${organization_id}")
 
     # Create PublisherConfig
-    response=$(create_publisher_config "${organization_id}")
-    check_status "create_publisher_config(${organization_id})" "${response}"
+    response=$(send create_publisher_config "${organization_id}")
 
     # Create Site and VendorSolutionConfig for each domain (eTLD+1)
     for domain in $(echo ${site_domains} | sed "s/,/ /g")
     do
         # Create Site
-        response=$(create_pms_site ${organization_id} "${domain}")
-        check_status "create_pms_site(${domain}, ${organization_id})" "${response}"
-
+        response=$(send create_pms_site ${organization_id} "${domain}")
         site_id=$(get_json_field "${response}" "['data'][0]['id']")
         publisher_alias=$(parse_publisher_alias "${response}")
-        site_data="${site_id}, ${domain}, ${publisher_alias}"
 
         # Verify Site
-        response=$(verify_pms_site clicktripz ${site_id} "${domain}")
-        check_status "verify_pms_site(${site_data})" "${response}"
+        response=$(send verify_pms_site clicktripz ${site_id} "${domain}")
 
         # Create VendorSolutionConfig
         conf_object=$(echo ${solution_config} \
                 | python3 -c "import sys, json; d=(json.load(sys.stdin)['data']['config']); d['@id']='${publisher_alias}'; print(json.dumps(d))")
-        response=$(create_vendor_solution_config "${conf_object}" "${publisher_alias}")
-        check_status "create_vendor_solution_config(${site_data})" "${response}"
+        response=$(send create_vendor_solution_config "${conf_object}" "${publisher_alias}")
 
         # Patch VendorSolutionConfig with PublisherMetadataModule
-        response=$(patch_vendor_solution_config "${publisher_alias}")
-        check_status "patch_vendor_solution_config(${site_data})" "${response}"
+        response=$(send patch_vendor_solution_config "${publisher_alias}")
     done
 }
 
