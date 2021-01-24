@@ -350,21 +350,21 @@ function create_publisher_config()
 #
 # Parameters:
 # ------------
-# $1 - integration group (old alias)
-# $2 - publisher alias
+# $1 - publisher alias
+# $2 - solution config JSON
 #
 function create_vendor_solution_config()
 {
     local auth_token=$(ad_services_auth_token)
 
-    local response=$(curl -s -X POST "${vendor_config_api}/$2" \
+    local response=$(curl -s -X POST "${vendor_config_api}/$1" \
         -H "accept: application/json"  \
         -H "Content-Type: application/json" \
         -H "auth-token: ${auth_token}" \
         -H "Authorization: bearer ${auth_token}" \
-        -d "$1")
+        -d "$2")
 
-    log debug "$1" "${response}"
+    log debug "$2" "${response}"
     
     echo "${response}"
 }
@@ -375,7 +375,7 @@ function create_vendor_solution_config()
 # Parameters
 # $1 - publisher alias
 #
-function patch_vendor_solution_config()
+function update_vendor_solution_config()
 {
     local request="{ \
         \"patch\": [{ \
@@ -460,8 +460,8 @@ function main()
         response=$(send verify_pms_site clicktripz ${site_id} "${domain}")
 
         # Create VendorSolutionConfig and patch it with PublisherMetadataModule
-        response=$(send create_vendor_solution_config "${site_config}" "${site_alias}")
-        response=$(send patch_vendor_solution_config "${site_alias}")
+        response=$(send create_vendor_solution_config "${site_alias}" "${site_config}")
+        response=$(send update_vendor_solution_config "${site_alias}")
     done
 }
 
