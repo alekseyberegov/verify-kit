@@ -105,6 +105,11 @@ function log()
 {
     local level=$1; shift
 
+    if [[ "${level}" == "debug" && "${verbose}" != "on" ]]
+    then
+        return
+    fi
+
      case "${level}" in
         error)
         args="r"
@@ -150,13 +155,15 @@ function check_status()
 #
 function site_key()
 {
+    local ids_arr="['data'][0]['identifiers']"
+
     for i in {0..1}; 
     do 
-        local key_type=$(get_json_field "$2" "['data'][0]['identifiers'][$i]['type']")
+        local key_type=$(get_json_field "$2" "${ids_arr}[$i]['type']")
 
         if [[ "${key_type}" == "$1" ]]
         then
-            local key_value=$(get_json_field "$2" "['data'][0]['identifiers'][$i]['siteKey']")
+            local key_value=$(get_json_field "$2" "${ids_arr}[$i]['siteKey']")
         fi
     done
     
@@ -460,42 +467,37 @@ function main()
 
 function parse_args()
 {
+     unknown_args=()
+
     # Parse the command line parameters
-    POSITIONAL=()
     while [[ $# -gt 0 ]]
     do
-    key="$1"
-
-    case $key in
-        -h|--help)
-        usage
-        ;;
-        -v|--verbose)
-        verbose="on"
+        case $1 in
+            -h|--help)
+                usage
+            ;;
+            -v|--verbose)
+                verbose="on"
+            ;;
+            -a|--alias)
+                integration_group="$2"
+                shift
+            ;;
+            -d|--domain)
+                site_domains="$2"
+                shift
+            ;;
+            -s|--session)
+                session_file=$(abs_path $2)
+                shift
+            ;;
+            *)
+                unknown_args+=("$1") 
+            ;;
+        esac
         shift
-        ;;
-        -a|--alias)
-        integration_group="$2"
-        shift
-        shift 
-        ;;
-        -d|--domain)
-        site_domains="$2"
-        shift
-        shift 
-        ;;
-        -s|--session)
-        session_file=$(abs_path $2)
-        shift
-        shift 
-        ;;
-        *)
-        POSITIONAL+=("$1") 
-        shift 
-        ;;
-    esac
     done
-    set -- "${POSITIONAL[@]}"
+    set -- "${unknown_args[@]}"
 }
 
 function validate_args()
