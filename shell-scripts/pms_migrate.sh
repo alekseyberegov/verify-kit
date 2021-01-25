@@ -411,6 +411,16 @@ function send()
     echo "${response}"
 } 
 
+function run()
+{
+    if [ $? -eq 1 ]
+    then
+        exit 1
+    fi
+
+    response="$*"
+}
+
 function main()
 {
     # Create an authenticated session for PMS
@@ -418,7 +428,7 @@ function main()
     session_cookies="PHPSESSID=${PHPSESSID}; AWSALB=${AWSALB}; AWSALBCORS=${AWSALB};"
 
     # Make sure that none of given domains is already tied to another publisher
-    response=$(send pms_sites clicktripz)
+    run "$(send pms_sites clicktripz)"
     site_list=$(get_json_field "${response}" "['data']")
 
     domain_list=$(echo "${site_domains}" | sed "s/,/ /g")
@@ -432,24 +442,24 @@ function main()
     done
 
     # Get VendorSolutionConfig for the integration group
-    response=$(send vendor_solution_config "${integration_group}")
+    run "$(send vendor_solution_config ${integration_group})"
     solution_config=$(get_json_field "${response}" "['data']['config']" "json.dumps")
   
     # Create Publisher
-    response=$(send create_pms_publisher "${integration_group}")
+    run "$(send create_pms_publisher ${integration_group})"
     organization_id=$(get_json_field "${response}" "['data']['organizationId']")
 
     # Verify publisher
-    response=$(send verify_pms_publisher "${organization_id}")
+    run "$(send verify_pms_publisher ${organization_id})"
 
     # Create PublisherConfig
-    response=$(send create_publisher_config "${organization_id}")
+    run "$(send create_publisher_config ${organization_id})"
 
     # Create Site and VendorSolutionConfig for each domain (eTLD+1)
     for domain in $domain_list
     do
         # Create Site
-        response=$(send create_pms_site ${organization_id} "${domain}")
+        run "$(send create_pms_site ${organization_id} ${domain})"
 
         # Get site's fields
         site_id=$(get_json_field "${response}" "['data'][0]['id']")
@@ -457,11 +467,11 @@ function main()
         site_config=$(set_json_field "${solution_config}" "['@id']" "'${site_alias}'")
 
         # Verify Site
-        response=$(send verify_pms_site clicktripz ${site_id} "${domain}")
+        run "$(send verify_pms_site clicktripz ${site_id} ${domain})"
 
         # Create VendorSolutionConfig and patch it with PublisherMetadataModule
-        response=$(send create_vendor_solution_config "${site_alias}" "${site_config}")
-        response=$(send update_vendor_solution_config "${site_alias}")
+        run $(send create_vendor_solution_config ${site_alias} "${site_config}")
+        run $(send update_vendor_solution_config ${site_alias})
     done
 }
 
