@@ -373,12 +373,15 @@ function create_vendor_solution_config()
 # Adds PublisherMetadataModule to a VendorSolutionConfig identified by the publisher alias
 #
 # Parameters
+# ----------
 # $1 - publisher alias
+# $2 - legacy integration group
 #
 function update_vendor_solution_config()
 {
     local request="{ \
-        \"patch\": [{ \
+        \"patch\": [ \
+            { \
                 \"op\": \"add\", \
                 \"path\": \"/serviceModuleConfigs/-\", \
                 \"value\": { \
@@ -387,7 +390,18 @@ function update_vendor_solution_config()
                     \"_enabled\": true, \
                     \"_useResponseEnvelope\": true \
                 } \
-            }] \
+            }, \
+            { \
+                \"op\" : \"add\", \
+                \"path\" : \"/clientModuleConfigs/-\", \
+                \"value\" : { \
+                    \"@type\": \"ConstrainModule_QueryFirewall2\", \
+                    \"@id\": \"query-firewall\", \
+                    \"runFor\": \"InlineContext\", \
+                    \"firewallAlias\": \"$2\" \
+                } \
+            } \
+        ] \
     }"
 
     local auth_token=$(ad_services_auth_token)
@@ -471,7 +485,7 @@ function main()
 
         # Create VendorSolutionConfig and patch it with PublisherMetadataModule
         run $(send create_vendor_solution_config ${site_alias} "${site_config}")
-        run $(send update_vendor_solution_config ${site_alias})
+        run $(send update_vendor_solution_config ${site_alias} ${integration_group})
     done
 }
 
