@@ -449,7 +449,7 @@ function main()
     domain_list=$(echo "${site_domains}" | sed "s/,/ /g")
     for domain in ${domain_list}
     do
-        if [[ "${site_list}" == *"${domain}"* ]]
+        if [[ "${site_list}" == *"\"${domain}"* ]]
         then
             log error "The domain ${domain} is already used by another organization"
             exit 1
@@ -459,7 +459,7 @@ function main()
     # Get VendorSolutionConfig for the integration group
     run "$(send vendor_solution_config ${integration_group})"
     solution_config=$(get_json_field "${response}" "['data']['config']" "json.dumps")
-    client_modules_patch=$([[ "clientModuleConfigs" == *"${solution_config}"* ]] && echo "" \
+    client_modules_patch=$([[ *"clientModuleConfigs"* == "${solution_config}" ]] && echo "" \
         || echo "{\"op\": \"add\", \"path\" : \"/clientModuleConfigs\", \"value\" : []},")
   
     # Create Publisher
