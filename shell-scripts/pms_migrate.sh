@@ -376,6 +376,7 @@ function create_vendor_solution_config()
 # ----------
 # $1 - publisher alias
 # $2 - legacy integration group
+# $3 - extra patches
 #
 function update_vendor_solution_config()
 {
@@ -391,7 +392,7 @@ function update_vendor_solution_config()
                     \"_useResponseEnvelope\": true \
                 } \
             }, \
-            { \
+            $3 { \
                 \"op\" : \"add\", \
                 \"path\" : \"/clientModuleConfigs/-\", \
                 \"value\" : { \
@@ -458,6 +459,8 @@ function main()
     # Get VendorSolutionConfig for the integration group
     run "$(send vendor_solution_config ${integration_group})"
     solution_config=$(get_json_field "${response}" "['data']['config']" "json.dumps")
+    client_modules_patch=$([[ "clientModuleConfigs" == *"${solution_config}"* ]] && echo "" \
+        || echo "{\"op\": \"add\", \"path\" : \"/clientModuleConfigs\", \"value\" : []},")
   
     # Create Publisher
     run "$(send create_pms_publisher ${integration_group})"
@@ -485,7 +488,7 @@ function main()
 
         # Create VendorSolutionConfig and patch it with PublisherMetadataModule
         run $(send create_vendor_solution_config ${site_alias} "${site_config}")
-        run $(send update_vendor_solution_config ${site_alias} ${integration_group})
+        run $(send update_vendor_solution_config ${site_alias} ${integration_group} "${client_modules_patch}")
     done
 }
 
