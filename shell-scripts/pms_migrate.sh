@@ -69,6 +69,7 @@ usage ()
    printf -- "  -s, --session file         %s\n" "path to session file"
    printf -- "  -h, --help                 %s\n" "show help"
    printf -- "  -v, --verbose              %s\n" "verbose mode"
+   printf -- "  -t, --test                 %s\n" "run in the mode"
    printf -- "\nExample:\n"
    printf -- "      $0 -a nypost -d \"nypost.com,pagesix.com\" -s ~/pms_session.env\n"
    printf -- "\n"
@@ -449,7 +450,7 @@ function main()
     domain_list=$(echo "${site_domains}" | sed "s/,/ /g")
     for domain in ${domain_list}
     do
-        if [[ "${site_list}" == *"\"${domain}"* ]]
+        if [[ "${site_list}" == *"'${domain}'"* ]]
         then
             log error "The domain ${domain} is already used by another organization"
             exit 1
@@ -459,8 +460,13 @@ function main()
     # Get VendorSolutionConfig for the integration group
     run "$(send vendor_solution_config ${integration_group})"
     solution_config=$(get_json_field "${response}" "['data']['config']" "json.dumps")
-    client_modules_patch=$([[ *"clientModuleConfigs"* == "${solution_config}" ]] && echo "" \
+    client_modules_patch=$([[ "${solution_config}" == *"clientModuleConfigs"*  ]] && echo "" \
         || echo "{\"op\": \"add\", \"path\" : \"/clientModuleConfigs\", \"value\" : []},")
+
+    if [[ "${test}" == "on" ]]
+    then
+        exit 1
+    fi
   
     # Create Publisher
     run "$(send create_pms_publisher ${integration_group})"
@@ -516,6 +522,10 @@ function parse_args()
             ;;
             -s|--session)
                 session_file=$(abs_path $2)
+                shift
+            ;;
+            -t|--test)
+                test="on"
                 shift
             ;;
             *)
