@@ -1,0 +1,11 @@
+## configuration for the PAS request
+pas_url: "https://www.clicktripz.com/x/pas"
+user_id: "d83dc1ae-0126-47ac-9231-11aed27c6ba7"
+user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 Chrome/83.0.4103.97 Safari/537.36"
+site_name: "mapquest"
+page_url: "https://www.mapquest.com/routeplanner"
+siteId: 41dff4912595490a908d1ea92c8d3cfc_reservationdesk.com
+publisherHash: 41dff4912595490a908d1ea92c8d3cfc
+aid: ff8392b6-ea08-414d-a1a1-38331b8f36f7_desktop_popunder
+audiences: "{\"typeOne\":[\"21\"],\"typeTwo\":[]}"
+destination: "Los Angeles, CA"
