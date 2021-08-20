@@ -1,0 +1,10 @@
+## configuration for the PAS request
+pas_url: "https://www.clicktripz.com/x/pas"
+user_id: "d83dc1ae-0126-47ac-9231-11aed27c6ba7"
+user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 Chrome/83.0.4103.97 Safari/537.36"
+site_name: "test"
+page_url: "https://www.tiki.com/"
+placement_id: "4-1"
+audiences: "{\"typeOne\":[\"21\"],\"typeTwo\":[]}"
+destination: "Los Angeles, CA"
+rotation: "ddu"
