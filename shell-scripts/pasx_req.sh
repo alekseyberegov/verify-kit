@@ -56,8 +56,8 @@ eval $(parse_url ${page_url} "page_url_")
 
 declare -a req_params=( \
    "ctzpid=$(uuidgen)" \
-   "alias=${site_name}" \
-   "siteId=${site_name}" \
+   "alias=${siteId}" \
+   "siteName=${site_name}" \
    "aid=${aid}" \
    "siteId=${siteId}" \
    "publisherHash=${publisherHash}" \
@@ -111,4 +111,3 @@ curl  "${pas_url}?${pas_params}" \
   -H 'accept-language: en-US,en;q=0.9,ru;q=0.8' \
   -H "cookie: _ctuid=${user_id};" \
   --compressed
-

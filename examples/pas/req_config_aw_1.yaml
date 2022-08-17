@@ -1,0 +1,13 @@
+## configuration for the PAS request
+pas_url: "https://compare.accuweather.com/x/pas"
+user_id: "7fda7667-92c6-498d-bec0-f580ab253b7a"
+user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 Chrome/83.0.4103.97 Safari/537.36"
+site_name: "accuweather.com"
+page_url: "https://www.accuweather.com/"
+siteId: "6894b4084c9f4984bd7280e4e5fa62ac_accuweather.com"
+publisherHash: "6894b4084c9f4984bd7280e4e5fa62ac"
+aid: "1eb9c47b-2d43-4c26-aa1b-1c4c5c0a3e4d_desktop_lightbox"
+audiences: "{\"typeOne\":[\"21\"],\"typeTwo\":[]}"
+destination: "Los Angeles,US"
+
+
